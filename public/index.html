@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Karnataka Bus Transit - Smart Ticketing & Gate Access Simulator</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- HTML5 QR Code Scanner CDN -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ksrtc: {
+              red: '#B91C1C',
+              darkRed: '#7F1D1D',
+              gold: '#D97706',
+              goldLight: '#FDE68A',
+              accent: '#DC2626'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-red-500 selection:text-white">
+
+  <!-- TOP HEADER -->
+  <header class="bg-gradient-to-r from-red-950 via-red-900 to-amber-950 border-b border-amber-600/30 shadow-lg sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-inner">
+          <i class="fa-solid fa-bus text-2xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              KSRTC / BMTC
+              <span class="text-xs bg-amber-500/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider">Smart Transit</span>
+            </h1>
+          </div>
+          <p class="text-xs text-amber-200/80 font-medium">
+            ಕರ್ನಾಟಕ ರಾಜ್ಯ ರಸ್ತೆ ಸಾರಿಗೆ ನಿಗಮ | Automated Boarding & Gate Access Control
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Control Bar -->
+      <div class="flex items-center space-x-3">
+        <button id="btnAudioToggle" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-200 flex items-center space-x-2 transition">
+          <i id="audioIcon" class="fa-solid fa-volume-high text-emerald-400"></i>
+          <span id="audioLabel">Sound On</span>
+        </button>
+
+        <button id="btnResetDemo" class="px-3 py-1.5 rounded-lg bg-red-900/40 hover:bg-red-900/60 border border-red-700/50 text-xs font-medium text-red-200 flex items-center space-x-1.5 transition">
+          <i class="fa-solid fa-rotate-right"></i>
+          <span>Reset Demo</span>
+        </button>
+
+        <div class="hidden md:flex items-center space-x-2 text-xs text-slate-400 pl-2 border-l border-slate-700/80">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Gate System Active</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN NAVIGATION TABS -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-red-800/40">
+      <nav class="flex space-x-2 sm:space-x-4 py-2 overflow-x-auto text-sm font-semibold">
+        <button id="tabBookingBtn" onclick="switchTab('booking')" class="px-4 py-2 rounded-lg bg-red-800/80 text-white flex items-center space-x-2 border border-amber-500/30 transition shadow-sm">
+          <i class="fa-solid fa-ticket text-amber-400"></i>
+          <span>1. Book Ticket & Karnataka Fare</span>
+        </button>
+        <button id="tabScannerBtn" onclick="switchTab('scanner')" class="px-4 py-2 rounded-lg bg-slate-900/60 text-slate-300 hover:text-white flex items-center space-x-2 border border-slate-800 transition">
+          <i class="fa-solid fa-qrcode text-emerald-400"></i>
+          <span>2. Bus Gate Turnstile Scanner</span>
+          <span id="badgeScansCount" class="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded-full border border-slate-700">Ready</span>
+        </button>
+        <button id="tabManifestBtn" onclick="switchTab('manifest')" class="px-4 py-2 rounded-lg bg-slate-900/60 text-slate-300 hover:text-white flex items-center space-x-2 border border-slate-800 transition">
+          <i class="fa-solid fa-chart-pie text-cyan-400"></i>
+          <span>3. Conductor Seat Manifest & Logs</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- MAIN BODY CONTAINER -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: TICKET BOOKING & KARNATAKA FARE ENGINE -->
+    <!-- ========================================================================= -->
+    <div id="tabBooking" class="space-y-6">
+      
+      <!-- Top Banner / Scheme Notice -->
+      <div class="bg-gradient-to-r from-red-950/80 to-amber-950/40 border border-amber-600/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 shrink-0">
+            <i class="fa-solid fa-id-card-clip text-2xl"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-amber-200 flex items-center gap-2">
+              Karnataka Shakti Scheme & Automated Transit Fare Engine
+              <span class="text-xs bg-emerald-950 text-emerald-300 border border-emerald-600/50 px-2 py-0.5 rounded-full font-bold">100% FREE TRAVEL</span>
+            </h2>
+            <p class="text-xs text-slate-300 mt-0.5">
+              Fare calculated strictly per Karnataka State Transport regulations: Base km rates, toll charges, passenger cess, 5% AC GST, and ₹0 Shakti passes for female Karnataka residents.
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+          <span class="text-xs bg-slate-900 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-halved text-amber-400"></i> Cryptographic Anti-Counterfeit Pass
+          </span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Form Column (7 Cols) -->
+        <div class="lg:col-span-7 space-y-6">
+
+          <!-- Route & Bus Service Selection Card -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+              <i class="fa-solid fa-route"></i> Select Route & Bus Service
+            </h3>
+
+            <!-- Route Dropdown -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Select Karnataka Route</label>
+              <select id="routeSelect" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500">
+                <!-- Dynamically Populated -->
+              </select>
+            </div>
+
+            <!-- Route Details Pill -->
+            <div id="routeDetailsPill" class="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 flex flex-wrap items-center justify-between text-xs text-slate-300 gap-2">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-road text-amber-400"></i>
+                <span>Distance: <strong id="lblRouteDistance" class="text-white">145 km</strong></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-clock text-amber-400"></i>
+                <span>Estimated: <strong id="lblRouteDuration" class="text-white">2h 45m</strong></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-receipt text-amber-400"></i>
+                <span>Toll Charge: <strong id="lblRouteToll" class="text-white">₹40</strong></span>
+              </div>
+            </div>
+
+            <!-- Bus Schedule / Bus Choice -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Select Scheduled Bus & Class</label>
+              <div id="busSelectorList" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <!-- Dynamically populated bus class cards -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Passenger Details Card -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                <i class="fa-solid fa-users"></i> Passenger Details & Concessions
+              </h3>
+              <button type="button" id="btnAddPassenger" class="text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded-lg flex items-center gap-1 transition">
+                <i class="fa-solid fa-user-plus"></i> Add Passenger
+              </button>
+            </div>
+
+            <!-- Passenger List Container -->
+            <div id="passengerContainer" class="space-y-3">
+              <!-- Dynamically rendered passenger items -->
+            </div>
+          </div>
+
+          <!-- Seat Selection Card -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                <i class="fa-solid fa-couch"></i> Select Bus Seats (<span id="lblSelectedSeatsCount">0</span>/<span id="lblRequiredSeatsCount">1</span> Selected)
+              </h3>
+              <div class="flex items-center space-x-3 text-[11px] text-slate-400">
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-slate-700 inline-block border border-slate-600"></span> Available</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-amber-500 inline-block"></span> Selected</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-600 inline-block"></span> Booked</span>
+                <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-emerald-500 inline-block"></span> Boarded</span>
+              </div>
+            </div>
+
+            <!-- Interactive Bus Layout Graphic -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center">
+              <!-- Front Driver Cabin Header -->
+              <div class="w-full max-w-md pb-3 border-b border-slate-800 flex items-center justify-between text-xs text-slate-400 font-semibold mb-3">
+                <span class="flex items-center gap-1 text-slate-300">
+                  <i class="fa-solid fa-circle-arrow-up text-amber-400"></i> FRONT / ENTRY DOOR
+                </span>
+                <span class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  <i class="fa-solid fa-gauge text-slate-400"></i> DRIVER CABIN
+                </span>
+              </div>
+
+              <!-- Seat Grid -->
+              <div id="seatMapGrid" class="grid grid-cols-5 gap-2 w-full max-w-md py-2">
+                <!-- Dynamically generated seat buttons -->
+              </div>
+
+              <!-- Rear of bus -->
+              <div class="w-full max-w-md pt-3 border-t border-slate-800 text-center text-[10px] text-slate-500 font-medium mt-2">
+                REAR OF VEHICLE / EMERGENCY EXIT
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Summary & Fare Breakdown Column (5 Cols) -->
+        <div class="lg:col-span-5 space-y-6">
+
+          <!-- Live Karnataka Fare Receipt Card -->
+          <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4 sticky top-24">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-file-invoice-dollar text-amber-400"></i> Fare Breakdown
+                </h3>
+                <p class="text-xs text-slate-400 font-medium">Karnataka State Fare Rules</p>
+              </div>
+              <span id="lblServiceTag" class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-full font-bold">
+                Airavat Club Class
+              </span>
+            </div>
+
+            <!-- Breakdown Line Items -->
+            <div class="space-y-2 text-xs">
+              <div class="flex justify-between text-slate-300">
+                <span>Distance Rate:</span>
+                <span id="lblFareRate" class="font-semibold text-slate-200">₹2.35 / km</span>
+              </div>
+              <div class="flex justify-between text-slate-300">
+                <span>Base Distance Fare:</span>
+                <span id="lblBaseFare" class="font-semibold text-slate-200">₹341</span>
+              </div>
+              <div class="flex justify-between text-slate-300">
+                <span>Passenger Amenity Cess:</span>
+                <span id="lblAmenityCess" class="font-semibold text-slate-200">₹15</span>
+              </div>
+              <div class="flex justify-between text-slate-300">
+                <span>Highway Toll Surcharge:</span>
+                <span id="lblTollCharge" class="font-semibold text-slate-200">₹40</span>
+              </div>
+              <div id="rowGst" class="flex justify-between text-slate-300">
+                <span>GST (5% AC Bus Service):</span>
+                <span id="lblGst" class="font-semibold text-slate-200">₹20</span>
+              </div>
+
+              <!-- Shakti Scheme Deduction Row (Green Highlight) -->
+              <div id="rowShaktiDiscount" class="hidden flex justify-between bg-emerald-950/60 border border-emerald-600/40 p-2 rounded-lg text-emerald-300 font-bold">
+                <span class="flex items-center gap-1.5">
+                  <i class="fa-solid fa-gift"></i> Karnataka Shakti Subsidy:
+                </span>
+                <span id="lblShaktiDiscount">- ₹0</span>
+              </div>
+
+              <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+                <div>
+                  <span class="text-xs text-slate-400 block font-medium">Total Amount Payable</span>
+                  <span class="text-[10px] text-slate-500">Includes all taxes & cess</span>
+                </div>
+                <div class="text-right">
+                  <span id="lblTotalPayable" class="text-2xl font-black text-amber-400">₹416</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Selected Seats Summary -->
+            <div class="bg-slate-950/80 rounded-xl p-3 border border-slate-800 text-xs flex items-center justify-between">
+              <span class="text-slate-400">Allocated Seats:</span>
+              <span id="lblAssignedSeats" class="font-bold text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">None</span>
+            </div>
+
+            <!-- Book Ticket CTA Button -->
+            <button id="btnBookTicket" onclick="handleBookTicket()" class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-red-700 via-red-600 to-amber-600 hover:from-red-600 hover:to-amber-500 text-white font-bold text-sm shadow-lg shadow-red-900/30 flex items-center justify-center space-x-2 transition transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed">
+              <i class="fa-solid fa-ticket-simple text-amber-300 text-base"></i>
+              <span>Book Ticket & Issue Digital Pass</span>
+            </button>
+
+            <!-- Quick Tip -->
+            <p class="text-[11px] text-slate-500 text-center flex items-center justify-center gap-1">
+              <i class="fa-solid fa-lock text-slate-400"></i> Boarding pass is generated with cryptographic QR security.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: BUS GATE TURNSTILE SCANNER SIMULATION -->
+    <!-- ========================================================================= -->
+    <div id="tabScanner" class="hidden space-y-6">
+
+      <!-- Gate Header & Configuration Bar -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+            <i class="fa-solid fa-door-open text-2xl"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              Automated Bus Boarding Turnstile & Gate Scanner
+              <span class="text-xs bg-slate-800 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-bold">ONLINE</span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Simulates terminal turnstile gate verification. Valid tickets grant barrier access; duplicate, expired, or wrong-bus tickets are denied.
+            </p>
+          </div>
+        </div>
+
+        <!-- Gate Bus Selector -->
+        <div class="flex items-center space-x-2 w-full md:w-auto">
+          <label class="text-xs font-semibold text-slate-300 whitespace-nowrap">Current Gate Bus:</label>
+          <select id="gateBusSelect" onchange="onGateBusChanged()" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500 w-full md:w-64">
+            <!-- Dynamically populated buses -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Turnstile Simulation Area: Visual Gate & Scanner -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Turnstile Visual Graphic & Status Panel (7 Cols) -->
+        <div class="lg:col-span-7 space-y-5">
+
+          <!-- Physical Gate 3D / Animated Representation -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden flex flex-col items-center">
+            
+            <!-- Overhead Digital Display Screen -->
+            <div id="turnstileDisplay" class="w-full max-w-lg bg-slate-950 border-2 border-slate-700 rounded-xl p-4 mb-6 shadow-inner text-center transition-all duration-300">
+              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1 border-b border-slate-800/80 pb-1">
+                <span id="turnstileGateTag" class="text-amber-400 font-bold">GATE G1 - BUS KA-01-F-4821</span>
+                <span id="turnstileClock" class="text-slate-400">20:55:00</span>
+              </div>
+
+              <!-- Main Status Badge -->
+              <div id="gateStatusTextContainer" class="py-3">
+                <div id="gateStatusBadge" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase bg-slate-800 text-slate-300 border border-slate-700">
+                  <span class="w-2.5 h-2.5 rounded-full bg-slate-400 animate-ping"></span>
+                  WAITING FOR TICKET SCAN
+                </div>
+                <h4 id="gateMessageHeading" class="text-lg font-bold text-slate-200 mt-2">
+                  Please Scan Boarding Pass QR
+                </h4>
+                <p id="gateMessageDetail" class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                  Hold QR code directly beneath scanner or upload pass file.
+                </p>
+              </div>
+
+              <!-- Passenger Seat Callout (When Granted) -->
+              <div id="gatePaxInfoRow" class="hidden pt-2 border-t border-slate-800 text-xs flex items-center justify-around font-medium">
+                <span class="text-slate-300">Passenger: <strong id="lblGatePaxName" class="text-white">---</strong></span>
+                <span class="text-slate-300">Assigned Seat: <strong id="lblGatePaxSeat" class="text-amber-400 font-bold text-sm">---</strong></span>
+                <span id="lblGatePaxShakti" class="text-emerald-400 font-bold hidden"><i class="fa-solid fa-female"></i> Shakti Pass</span>
+              </div>
+            </div>
+
+            <!-- PHYSICAL BARRIER GATES GRAPHIC -->
+            <div class="w-full max-w-md relative flex items-center justify-between py-6 px-4">
+              
+              <!-- Left Turnstile Pillar -->
+              <div class="flex flex-col items-center">
+                <!-- Status LED -->
+                <div id="ledLeft" class="w-5 h-5 rounded-full bg-slate-700 border-2 border-slate-900 shadow-md mb-2 transition-colors duration-300"></div>
+                <div class="w-16 h-36 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-lg border border-slate-600 shadow-xl flex flex-col items-center justify-center p-1">
+                  <div class="w-10 h-10 rounded-full bg-slate-900/90 border border-slate-600 flex items-center justify-center text-slate-400 text-xs">
+                    <i class="fa-solid fa-fingerprint"></i>
+                  </div>
+                  <span class="text-[9px] text-slate-400 mt-2 font-mono uppercase tracking-tighter">Pillar L</span>
+                </div>
+              </div>
+
+              <!-- CENTER PASSAGEWAY & MOVING FLAP BARRIERS -->
+              <div id="turnstileBarrierContainer" class="flex-grow flex items-center justify-center relative h-36 mx-2 overflow-hidden bg-slate-950/40 rounded-lg border-b-2 border-slate-800">
+                <!-- Center Ground Sensors / Laser Line -->
+                <div id="gateLaserLine" class="laser-line"></div>
+                
+                <!-- Left Flap -->
+                <div id="gateFlapLeft" class="gate-flap-left w-1/2 h-16 bg-gradient-to-r from-red-600 to-red-500 rounded-r-lg border border-red-400 shadow-lg flex items-center justify-center text-white font-black text-xs">
+                  <i class="fa-solid fa-bars"></i>
+                </div>
+
+                <!-- Right Flap -->
+                <div id="gateFlapRight" class="gate-flap-right w-1/2 h-16 bg-gradient-to-l from-red-600 to-red-500 rounded-l-lg border border-red-400 shadow-lg flex items-center justify-center text-white font-black text-xs">
+                  <i class="fa-solid fa-bars"></i>
+                </div>
+              </div>
+
+              <!-- Right Turnstile Pillar -->
+              <div class="flex flex-col items-center">
+                <!-- Status LED -->
+                <div id="ledRight" class="w-5 h-5 rounded-full bg-slate-700 border-2 border-slate-900 shadow-md mb-2 transition-colors duration-300"></div>
+                <div class="w-16 h-36 bg-gradient-to-l from-slate-700 to-slate-800 rounded-t-lg border border-slate-600 shadow-xl flex flex-col items-center justify-center p-1">
+                  <div class="w-10 h-10 rounded-full bg-slate-900/90 border border-slate-600 flex items-center justify-center text-slate-400 text-xs">
+                    <i class="fa-solid fa-camera"></i>
+                  </div>
+                  <span class="text-[9px] text-slate-400 mt-2 font-mono uppercase tracking-tighter">Pillar R</span>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Bottom Gate Base -->
+            <div class="w-full max-w-md h-3 bg-slate-800 rounded-full border border-slate-700 shadow-inner"></div>
+
+          </div>
+
+          <!-- Quick Test Scenarios Bar (One-Click Testing) -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-vial-circle-check"></i> Instant Simulation Actions (1-Click Test Scenarios)
+            </h3>
+            <p class="text-xs text-slate-400">
+              Instantly test each turnstile decision rule without needing an external barcode camera:
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <button onclick="simulateScanLastTicket()" class="px-3 py-2.5 rounded-xl bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-600/50 text-emerald-200 text-xs font-bold flex items-center space-x-2 transition text-left">
+                <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+                <div>
+                  <div class="text-emerald-300">Scan Latest Ticket</div>
+                  <div class="text-[10px] text-emerald-400/80 font-normal">Test ACCESS GRANTED</div>
+                </div>
+              </button>
+
+              <button onclick="simulateRescanTicket()" class="px-3 py-2.5 rounded-xl bg-red-950/70 hover:bg-red-900/80 border border-red-600/50 text-red-200 text-xs font-bold flex items-center space-x-2 transition text-left">
+                <i class="fa-solid fa-triangle-exclamation text-red-400 text-base"></i>
+                <div>
+                  <div class="text-red-300">Re-Scan Same Ticket</div>
+                  <div class="text-[10px] text-red-400/80 font-normal">Test ALREADY BOARDED</div>
+                </div>
+              </button>
+
+              <button onclick="simulateScanWrongBus()" class="px-3 py-2.5 rounded-xl bg-amber-950/70 hover:bg-amber-900/80 border border-amber-600/50 text-amber-200 text-xs font-bold flex items-center space-x-2 transition text-left">
+                <i class="fa-solid fa-bus-simple text-amber-400 text-base"></i>
+                <div>
+                  <div class="text-amber-300">Scan at Wrong Gate</div>
+                  <div class="text-[10px] text-amber-400/80 font-normal">Test WRONG BUS Gate</div>
+                </div>
+              </button>
+
+              <button onclick="simulateScanFakeQr()" class="px-3 py-2.5 rounded-xl bg-purple-950/70 hover:bg-purple-900/80 border border-purple-600/50 text-purple-200 text-xs font-bold flex items-center space-x-2 transition text-left">
+                <i class="fa-solid fa-bug text-purple-400 text-base"></i>
+                <div>
+                  <div class="text-purple-300">Scan Fake / Tampered QR</div>
+                  <div class="text-[10px] text-purple-400/80 font-normal">Test COUNTERFEIT Alert</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- QR Scanner Station: Webcam & File Upload (5 Cols) -->
+        <div class="lg:col-span-5 space-y-5">
+
+          <!-- Optical Scanner Hardware Box -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-camera-rotate text-emerald-400"></i> Optical QR Scanner
+              </h3>
+              <div class="flex items-center space-x-2">
+                <button id="btnStartCamera" onclick="toggleCameraScanner()" class="px-2.5 py-1 rounded-lg bg-emerald-900/50 hover:bg-emerald-900 text-emerald-300 border border-emerald-600/40 text-xs font-semibold flex items-center gap-1.5 transition">
+                  <i class="fa-solid fa-video"></i> <span id="cameraBtnLabel">Start Camera</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Webcam Reader Container -->
+            <div id="scannerReaderWrapper" class="bg-slate-950 border-2 border-dashed border-slate-700 rounded-xl p-2 relative min-h-[220px] flex flex-col items-center justify-center overflow-hidden">
+              <div id="qrReader" class="w-full"></div>
+              
+              <!-- Idle placeholder when camera is not running -->
+              <div id="scannerPlaceholder" class="text-center p-6 space-y-3">
+                <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500">
+                  <i class="fa-solid fa-qrcode text-3xl"></i>
+                </div>
+                <p class="text-xs text-slate-400 max-w-xs">
+                  Click <strong>"Start Camera"</strong> to scan physical ticket QR codes with your webcam, or use the file upload below.
+                </p>
+              </div>
+            </div>
+
+            <!-- File Upload Barcode Scanner -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
+                <i class="fa-solid fa-file-arrow-up text-amber-400"></i> Upload Downloaded Ticket (PDF / PNG / JPG)
+              </label>
+              <div class="flex items-center gap-2">
+                <input type="file" id="ticketFileInput" accept="image/*,application/pdf" class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+                <button onclick="handleFileScan()" class="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold transition shrink-0">
+                  Verify File
+                </button>
+              </div>
+            </div>
+
+            <!-- Manual Ticket ID / QR Payload Input -->
+            <div class="pt-2 border-t border-slate-800/80">
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Or Paste QR Data / Ticket ID:</label>
+              <div class="flex items-center gap-2">
+                <input type="text" id="manualTicketInput" placeholder="e.g. KA-KSRTC-2026-XXXXX" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500">
+                <button onclick="handleManualVerify()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 transition shrink-0">
+                  Scan
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Gate Activity Feed -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+              <span>Live Gate Feed</span>
+              <span class="text-[10px] text-slate-500">Auto-refreshing</span>
+            </h4>
+            <div id="recentGateFeed" class="space-y-2 max-h-48 overflow-y-auto pr-1 text-xs">
+              <!-- Dynamically populated scan events -->
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ========================================================================= -->
+    <!-- TAB 3: CONDUCTOR SEATING MANIFEST & SECURITY AUDIT LOGS -->
+    <!-- ========================================================================= -->
+    <div id="tabManifest" class="hidden space-y-6">
+
+      <!-- Conductor Manifest Header -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
+            <i class="fa-solid fa-clipboard-user text-2xl"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              Conductor Manifest & Real-Time Bus Occupancy
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Live seat occupancy status: Available (White), Booked (Blue), and Successfully Boarded (Green).
+            </p>
+          </div>
+        </div>
+
+        <!-- Bus Manifest Selector -->
+        <div class="flex items-center space-x-2">
+          <label class="text-xs font-semibold text-slate-300 whitespace-nowrap">Select Bus:</label>
+          <select id="manifestBusSelect" onchange="renderManifest()" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-amber-300 font-semibold focus:outline-none focus:border-amber-500">
+            <!-- Dynamically populated buses -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Bus Live Seating Layout & Occupancy Progress -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Manifest Seating Visualizer (5 Cols) -->
+        <div class="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h3 id="lblManifestBusTitle" class="text-sm font-bold text-white">KA-01-F-4821</h3>
+              <p id="lblManifestBusSubtitle" class="text-xs text-slate-400">Airavat Club Class - Bengaluru to Mysuru</p>
+            </div>
+            <div class="text-right">
+              <span id="lblManifestBoardedRatio" class="text-base font-black text-emerald-400">0 / 40</span>
+              <span class="block text-[10px] text-slate-400">Boarded</span>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+            <div id="manifestProgressBar" class="bg-gradient-to-r from-blue-500 to-emerald-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+
+          <!-- Seating Grid -->
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center">
+            <div class="w-full text-center text-[10px] font-bold text-slate-500 tracking-wider mb-2">FRONT (DRIVER)</div>
+            <div id="manifestSeatGrid" class="grid grid-cols-5 gap-2 w-full max-w-sm py-2">
+              <!-- Dynamically populated seats -->
+            </div>
+            <div class="w-full text-center text-[10px] font-bold text-slate-500 tracking-wider mt-2">REAR</div>
+          </div>
+        </div>
+
+        <!-- Passenger Manifest Table (7 Cols) -->
+        <div class="lg:col-span-7 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 flex flex-col">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-cyan-400"></i> Passenger Boarding List
+            </h3>
+            <span id="lblManifestPaxCount" class="text-xs text-slate-400 font-medium">0 passengers registered</span>
+          </div>
+
+          <div class="overflow-x-auto flex-grow max-h-[380px] overflow-y-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-950 text-slate-400 sticky top-0 uppercase tracking-wider font-semibold border-b border-slate-800">
+                <tr>
+                  <th class="py-2.5 px-3">Seat</th>
+                  <th class="py-2.5 px-3">Passenger</th>
+                  <th class="py-2.5 px-3">Age/Gen</th>
+                  <th class="py-2.5 px-3">PNR / Ticket</th>
+                  <th class="py-2.5 px-3">Boarding Status</th>
+                </tr>
+              </thead>
+              <tbody id="manifestTableBody" class="divide-y divide-slate-800 text-slate-300">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Security Gate Audit Log Table -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-shield-virus text-amber-400"></i> Gate Access Security Audit Log
+            </h3>
+            <p class="text-xs text-slate-400">Cryptographic verification logs, passback rejections, and gate entry timestamps</p>
+          </div>
+          <button onclick="refreshGateLogs()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh
+          </button>
+        </div>
+
+        <div class="overflow-x-auto max-h-72 overflow-y-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-950 text-slate-400 sticky top-0 uppercase tracking-wider font-semibold border-b border-slate-800">
+              <tr>
+                <th class="py-2.5 px-3">Time</th>
+                <th class="py-2.5 px-3">Decision</th>
+                <th class="py-2.5 px-3">Ticket ID / PNR</th>
+                <th class="py-2.5 px-3">Passenger & Seat</th>
+                <th class="py-2.5 px-3">Reason / Diagnostic Message</th>
+              </tr>
+            </thead>
+            <tbody id="auditLogTableBody" class="divide-y divide-slate-800 text-slate-300 font-mono">
+              <!-- Dynamically populated logs -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: DIGITAL TICKET & BOARDING PASS PREVIEW -->
+  <!-- ========================================================================= -->
+  <div id="ticketModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden transform transition-all">
+      
+      <!-- Modal Top Header -->
+      <div class="bg-gradient-to-r from-red-950 via-red-900 to-amber-950 p-4 border-b border-amber-600/30 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-circle-check text-emerald-400 text-xl"></i>
+          <div>
+            <h3 class="text-base font-bold text-white">Ticket Issued Successfully!</h3>
+            <p class="text-[11px] text-amber-200">Karnataka State Road Transport Corporation</p>
+          </div>
+        </div>
+        <button onclick="closeTicketModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Ticket Card Layout -->
+      <div id="printableTicketArea" class="p-5 space-y-4 bg-slate-900">
+        
+        <!-- Boarding Pass Graphic -->
+        <div class="bg-gradient-to-b from-slate-950 to-slate-900 border-2 border-red-700/60 rounded-2xl p-5 relative shadow-xl ticket-edge-cutout">
+          
+          <!-- Pass Brand Top -->
+          <div class="flex items-center justify-between border-b border-red-900/50 pb-3">
+            <div>
+              <div class="text-xs font-black text-amber-400 tracking-wider">KSRTC DIGITAL PASS</div>
+              <h4 id="modalTicketRoute" class="text-sm font-bold text-white">Bengaluru to Mysuru</h4>
+            </div>
+            <div class="text-right">
+              <span id="modalTicketPnr" class="text-xs font-mono font-bold text-red-400 bg-red-950/80 px-2 py-0.5 rounded border border-red-800">PNR: KA892134</span>
+            </div>
+          </div>
+
+          <!-- Pass Details Grid -->
+          <div class="grid grid-cols-3 gap-3 py-3 text-xs border-b border-dashed border-slate-700">
+            <div>
+              <span class="text-[10px] text-slate-400 block">Bus Service</span>
+              <strong id="modalTicketService" class="text-white">Airavat Club Class</strong>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block">Bus Registration</span>
+              <strong id="modalTicketBusNo" class="text-amber-400 font-mono">KA-01-F-4821</strong>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block">Departure</span>
+              <strong id="modalTicketTime" class="text-white">09:30 AM</strong>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block">Seat Assigned</span>
+              <strong id="modalTicketSeats" class="text-emerald-400 font-bold text-sm">12W</strong>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block">Platform / Gate</span>
+              <strong id="modalTicketGate" class="text-white">Gate G1</strong>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-400 block">Total Fare</span>
+              <strong id="modalTicketFare" class="text-white font-bold">₹416</strong>
+            </div>
+          </div>
+
+          <!-- Passenger Names & Concession -->
+          <div class="py-2.5 text-xs flex items-center justify-between border-b border-slate-800">
+            <div>
+              <span class="text-[10px] text-slate-400 block">Passenger(s)</span>
+              <span id="modalTicketPaxNames" class="font-bold text-slate-200">Anand Rao</span>
+            </div>
+            <div id="modalShaktiBadge" class="hidden">
+              <span class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-600/50 px-2 py-0.5 rounded font-bold">
+                Shakti Scheme (Free)
+              </span>
+            </div>
+          </div>
+
+          <!-- Embedded Scannable QR Code -->
+          <div class="pt-3 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="space-y-1 text-left">
+              <span class="text-xs font-bold text-amber-400 flex items-center gap-1">
+                <i class="fa-solid fa-qrcode"></i> Turnstile Access QR
+              </span>
+              <p class="text-[11px] text-slate-400 max-w-[240px]">
+                Scan this high-contrast QR at the terminal gate turnstile to board the vehicle.
+              </p>
+              <div class="text-[10px] text-slate-500 font-mono" id="modalTicketIdLabel">ID: KA-KSRTC-2026-XXXX</div>
+            </div>
+
+            <!-- QR Container -->
+            <div class="p-2 bg-white rounded-xl shadow-lg border-2 border-red-600 shrink-0">
+              <img id="modalQrImage" src="" alt="Ticket QR Code" class="w-28 h-28 object-contain">
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="bg-slate-950 p-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2.5">
+        <a id="btnDownloadPdf" href="#" target="_blank" class="px-4 py-2 rounded-xl bg-red-700 hover:bg-red-600 text-white font-bold text-xs flex items-center space-x-1.5 transition shadow">
+          <i class="fa-solid fa-file-pdf text-amber-300"></i>
+          <span>Download PDF Ticket</span>
+        </a>
+
+        <button onclick="downloadTicketImage()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center space-x-1.5 border border-slate-700 transition">
+          <i class="fa-solid fa-image"></i>
+          <span>Save PNG Pass</span>
+        </button>
+
+        <button onclick="sendTicketToScanner()" class="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs flex items-center space-x-1.5 transition shadow">
+          <i class="fa-solid fa-door-open"></i>
+          <span>Send to Gate Scanner</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Audio Synthesizer Script -->
+  <script src="js/audio.js"></script>
+  <!-- Main Frontend Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,67 @@
+[
+  {
+    "id": "BUS-KA-01-4821",
+    "busNumber": "KA-01-F-4821",
+    "routeId": "route-1",
+    "routeName": "Bengaluru (Majestic) -> Mysuru (Suburban BS)",
+    "serviceType": "Airavat Club Class",
+    "isAc": true,
+    "departureTime": "09:30 AM",
+    "platform": "Platform 3A, Majestic Terminal 1",
+    "gate": "Gate G1",
+    "totalSeats": 40,
+    "seats": {}
+  },
+  {
+    "id": "BUS-KA-09-7712",
+    "busNumber": "KA-09-F-7712",
+    "routeId": "route-1",
+    "routeName": "Bengaluru (Majestic) -> Mysuru (Suburban BS)",
+    "serviceType": "Karnataka Sarige",
+    "isAc": false,
+    "departureTime": "10:00 AM",
+    "platform": "Platform 2B, Majestic Terminal 1",
+    "gate": "Gate G2",
+    "totalSeats": 48,
+    "seats": {}
+  },
+  {
+    "id": "BUS-KA-19-3305",
+    "busNumber": "KA-19-F-3305",
+    "routeId": "route-2",
+    "routeName": "Bengaluru (Majestic) -> Mangaluru (KSRTC BS)",
+    "serviceType": "Rajahamsa",
+    "isAc": false,
+    "departureTime": "10:30 PM",
+    "platform": "Platform 5, Majestic Terminal 2",
+    "gate": "Gate G3",
+    "totalSeats": 36,
+    "seats": {}
+  },
+  {
+    "id": "BUS-KA-25-8841",
+    "busNumber": "KA-25-F-8841",
+    "routeId": "route-3",
+    "routeName": "Bengaluru (Majestic) -> Hubballi (New Bus Stand)",
+    "serviceType": "EV Power Plus",
+    "isAc": true,
+    "departureTime": "02:00 PM",
+    "platform": "Platform 6, Majestic Terminal 2",
+    "gate": "Gate G4",
+    "totalSeats": 42,
+    "seats": {}
+  },
+  {
+    "id": "BUS-KA-01-9999",
+    "busNumber": "KA-01-FA-9999",
+    "routeId": "route-5",
+    "routeName": "BMTC: Kempegowda Bus Station -> Kempegowda Intl Airport (Vayu Vajra)",
+    "serviceType": "Airavat Club Class",
+    "isAc": true,
+    "departureTime": "11:15 AM",
+    "platform": "BMTC Majestic Bay 8",
+    "gate": "Gate V1",
+    "totalSeats": 36,
+    "seats": {}
+  }
+]

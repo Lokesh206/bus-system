@@ -1,0 +1,53 @@
+[
+  {
+    "id": "route-1",
+    "name": "Bengaluru (Majestic) -> Mysuru (Suburban BS)",
+    "source": "Bengaluru (Majestic)",
+    "destination": "Mysuru (Suburban BS)",
+    "distanceKm": 145,
+    "duration": "2h 45m",
+    "stops": ["Bengaluru Majestic", "Kengeri", "Bidadi", "Ramanagara", "Channapatna", "Maddur", "Mandya", "Srirangapatna", "Mysuru"],
+    "tollFee": 40
+  },
+  {
+    "id": "route-2",
+    "name": "Bengaluru (Majestic) -> Mangaluru (KSRTC BS)",
+    "source": "Bengaluru (Majestic)",
+    "destination": "Mangaluru (KSRTC BS)",
+    "distanceKm": 350,
+    "duration": "7h 15m",
+    "stops": ["Bengaluru Majestic", "Nelamangala", "Kunigal", "Channarayapatna", "Hassan", "Sakleshpur", "Uppinangady", "Bantwal", "Mangaluru"],
+    "tollFee": 85
+  },
+  {
+    "id": "route-3",
+    "name": "Bengaluru (Majestic) -> Hubballi (New Bus Stand)",
+    "source": "Bengaluru (Majestic)",
+    "destination": "Hubballi (New Bus Stand)",
+    "distanceKm": 410,
+    "duration": "7h 45m",
+    "stops": ["Bengaluru Majestic", "Tumakuru", "Sira", "Chitradurga", "Davanagere", "Harihar", "Ranebennur", "Haveri", "Hubballi"],
+    "tollFee": 110
+  },
+  {
+    "id": "route-4",
+    "name": "Bengaluru (Majestic) -> Shivamogga (KSRTC BS)",
+    "source": "Bengaluru (Majestic)",
+    "destination": "Shivamogga (KSRTC BS)",
+    "distanceKm": 280,
+    "duration": "5h 30m",
+    "stops": ["Bengaluru Majestic", "Tumakuru", "Tiptur", "Arsikere", "Kadur", "Bhadravati", "Shivamogga"],
+    "tollFee": 60
+  },
+  {
+    "id": "route-5",
+    "name": "BMTC: Kempegowda Bus Station -> Kempegowda Intl Airport (Vayu Vajra)",
+    "source": "Kempegowda BS (Majestic)",
+    "destination": "Bengaluru Airport (KIA)",
+    "distanceKm": 38,
+    "duration": "1h 15m",
+    "stops": ["Majestic", "Mekhri Circle", "Hebbal", "Yelahanka Bypass", "Navayuga Toll", "KIA Terminal 1"],
+    "tollFee": 30
+  }
+]
+

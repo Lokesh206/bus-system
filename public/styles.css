@@ -1,0 +1,118 @@
+/* Karnataka Bus Transit Simulation Stylesheet */
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 0.4; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+@keyframes scan-laser {
+  0% { top: 0%; opacity: 0.8; }
+  50% { top: 95%; opacity: 1; }
+  100% { top: 0%; opacity: 0.8; }
+}
+
+@keyframes swing-left {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-75deg); }
+}
+
+@keyframes swing-right {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(75deg); }
+}
+
+.laser-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #ef4444, #f87171, #ef4444, transparent);
+  box-shadow: 0 0 12px #ef4444;
+  animation: scan-laser 2.2s infinite ease-in-out;
+}
+
+/* Turnstile Gate Barrier Animations */
+.gate-flap-left {
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: left center;
+}
+
+.gate-flap-right {
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: right center;
+}
+
+.gate-open .gate-flap-left {
+  transform: rotate(-70deg) translateX(-10px);
+}
+
+.gate-open .gate-flap-right {
+  transform: rotate(70deg) translateX(10px);
+}
+
+/* Seat map styling */
+.seat-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.seat-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.seat-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Ticket Boarding Pass Card Styling */
+.ticket-edge-cutout {
+  position: relative;
+}
+
+.ticket-edge-cutout::before,
+.ticket-edge-cutout::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  background-color: #0f172a; /* Match modal backdrop */
+  border-radius: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.ticket-edge-cutout::before {
+  left: -12px;
+}
+
+.ticket-edge-cutout::after {
+  right: -12px;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Sound indicator ripple */
+.audio-ripple {
+  animation: pulse-ring 2s infinite ease-in-out;
+}
+
