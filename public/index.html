@@ -10,6 +10,11 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <!-- HTML5 QR Code Scanner CDN -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Leaflet CSS & JS for OpenStreetMap Live Fleet Tracking -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Socket.IO Client -->
+  <script src="/socket.io/socket.io.js"></script>
   <!-- Custom Styles -->
   <link rel="stylesheet" href="styles.css">
   <script>
@@ -54,6 +59,16 @@
 
       <!-- Quick Control Bar -->
       <div class="flex items-center space-x-3">
+        <!-- Language Selector (EN, KN, HI) -->
+        <div class="flex items-center space-x-1.5 bg-slate-900/90 border border-slate-700/80 rounded-lg px-2 py-1 text-xs">
+          <i class="fa-solid fa-language text-amber-400"></i>
+          <select id="langSelect" onchange="changeLanguage(this.value)" class="bg-transparent text-amber-300 font-bold focus:outline-none cursor-pointer">
+            <option value="en" class="bg-slate-900 text-white">English (EN)</option>
+            <option value="kn" class="bg-slate-900 text-white">ಕನ್ನಡ (KN)</option>
+            <option value="hi" class="bg-slate-900 text-white">हिंदी (HI)</option>
+          </select>
+        </div>
+
         <button id="btnAudioToggle" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-xs font-medium text-slate-200 flex items-center space-x-2 transition">
           <i id="audioIcon" class="fa-solid fa-volume-high text-emerald-400"></i>
           <span id="audioLabel">Sound On</span>
@@ -66,7 +81,7 @@
 
         <div class="hidden md:flex items-center space-x-2 text-xs text-slate-400 pl-2 border-l border-slate-700/80">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Gate System Active</span>
+          <span>Smart Transit 2.0</span>
         </div>
       </div>
     </div>
@@ -76,16 +91,21 @@
       <nav class="flex space-x-2 sm:space-x-4 py-2 overflow-x-auto text-sm font-semibold">
         <button id="tabBookingBtn" onclick="switchTab('booking')" class="px-4 py-2 rounded-lg bg-red-800/80 text-white flex items-center space-x-2 border border-amber-500/30 transition shadow-sm">
           <i class="fa-solid fa-ticket text-amber-400"></i>
-          <span>1. Book Ticket & Karnataka Fare</span>
+          <span id="tabBookingLabel">1. Book Ticket & Karnataka Fare</span>
         </button>
         <button id="tabScannerBtn" onclick="switchTab('scanner')" class="px-4 py-2 rounded-lg bg-slate-900/60 text-slate-300 hover:text-white flex items-center space-x-2 border border-slate-800 transition">
           <i class="fa-solid fa-qrcode text-emerald-400"></i>
-          <span>2. Bus Gate Turnstile Scanner</span>
-          <span id="badgeScansCount" class="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded-full border border-slate-700">Ready</span>
+          <span id="tabScannerLabel">2. Bus Gate Turnstile Twin</span>
+          <span id="badgeScansCount" class="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded-full border border-slate-700">Digital Twin</span>
         </button>
         <button id="tabManifestBtn" onclick="switchTab('manifest')" class="px-4 py-2 rounded-lg bg-slate-900/60 text-slate-300 hover:text-white flex items-center space-x-2 border border-slate-800 transition">
           <i class="fa-solid fa-chart-pie text-cyan-400"></i>
-          <span>3. Conductor Seat Manifest & Logs</span>
+          <span id="tabManifestLabel">3. Conductor Seat Manifest & Logs</span>
+        </button>
+        <button id="tabFleetBtn" onclick="switchTab('fleet')" class="px-4 py-2 rounded-lg bg-slate-900/60 text-slate-300 hover:text-white flex items-center space-x-2 border border-slate-800 transition">
+          <i class="fa-solid fa-map-location-dot text-amber-400"></i>
+          <span id="tabFleetLabel">4. Live GPS Fleet Tracking</span>
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
         </button>
       </nav>
     </div>
@@ -466,6 +486,33 @@
             </div>
           </div>
 
+          <!-- Turnstile Digital Twin Sensor Emulation Bar -->
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-microchip"></i> Turnstile Digital Twin — Sensor Emulation
+              </h4>
+              <span class="text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-700/50 px-2 py-0.5 rounded font-mono">Sensors Active</span>
+            </div>
+            <p class="text-[11px] text-slate-400">
+              Simulate passage infrared beams, anti-tailgating obstruction alarms, and fail-safe emergency egress:
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-xs">
+              <button onclick="simulateSensorPassage()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold flex items-center gap-2 transition">
+                <i class="fa-solid fa-person-walking text-emerald-400"></i>
+                <span>Break IR Beam (Pass)</span>
+              </button>
+              <button onclick="simulateSensorObstruction()" class="px-3 py-2 rounded-xl bg-amber-950/60 hover:bg-amber-900/70 border border-amber-600/40 text-amber-200 font-semibold flex items-center gap-2 transition">
+                <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
+                <span>Obstruction Alarm</span>
+              </button>
+              <button onclick="simulateEmergencyEgress()" class="px-3 py-2 rounded-xl bg-red-950/70 hover:bg-red-900/80 border border-red-600/50 text-red-200 font-semibold flex items-center gap-2 transition">
+                <i class="fa-solid fa-fire-extinguisher text-red-400"></i>
+                <span>Emergency Egress</span>
+              </button>
+            </div>
+          </div>
+
         </div>
 
         <!-- QR Scanner Station: Webcam & File Upload (5 Cols) -->
@@ -661,6 +708,78 @@
             </tbody>
           </table>
         </div>
+      </div>
+
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 4: LIVE GPS FLEET TRACKING & HIGHWAY TRAJECTORIES -->
+    <!-- ========================================================================= -->
+    <div id="tabFleet" class="hidden space-y-6">
+
+      <!-- Fleet Header & Control Bar -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+            <i class="fa-solid fa-satellite-dish text-2xl"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              Karnataka Highway Real-Time Fleet Tracking
+              <span class="text-xs bg-emerald-950 text-emerald-300 border border-emerald-600/50 px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> WEBSOCKET LIVE
+              </span>
+            </h2>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Live OpenStreetMap positions, active telemetry, speed, heading, and next stop arrival indicators along Karnataka state transit corridors.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <span class="text-xs bg-slate-950 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-route text-amber-400"></i> Active Corridors: <strong class="text-white">Bengaluru - Mysuru - Mangaluru</strong>
+          </span>
+        </div>
+      </div>
+
+      <!-- Live Map & Fleet Telemetry Cards (Split Grid) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Leaflet Map Container (8 Cols) -->
+        <div class="lg:col-span-8 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl space-y-3 flex flex-col">
+          <div class="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-2">
+            <span class="flex items-center gap-2">
+              <i class="fa-solid fa-map text-emerald-400"></i> OpenStreetMap Live Satellite Polyline Grid
+            </span>
+            <span class="text-[11px] text-slate-500">Updated every 2.5s</span>
+          </div>
+
+          <div id="fleetMap" class="w-full h-[460px] rounded-xl overflow-hidden border border-slate-700 shadow-inner z-0"></div>
+          
+          <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-1 bg-red-500 inline-block rounded"></span> Route 1 (Bengaluru - Mysuru)</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-1 bg-blue-500 inline-block rounded"></span> Route 2 (Bengaluru - Mangaluru)</span>
+            <span class="text-slate-500"><i class="fa-solid fa-circle-info"></i> Markers indicate real-time heading & speed</span>
+          </div>
+        </div>
+
+        <!-- Live Bus Telemetry Feed Cards (4 Cols) -->
+        <div class="lg:col-span-4 space-y-4">
+          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-bus"></i> Active Fleet Telemetry
+              </h3>
+              <span id="lblActiveFleetCount" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">3 Buses</span>
+            </div>
+
+            <div id="fleetTelemetryCards" class="space-y-3 max-h-[440px] overflow-y-auto pr-1">
+              <!-- Dynamically populated bus cards -->
+            </div>
+          </div>
+        </div>
+
       </div>
 
     </div>

@@ -4,3 +4,7 @@ yarn-debug.log*
 yarn-error.log*
 .DS_Store
 *.log
+.env
+.env.local
+data/transit_state_v2.json
+data/transit_state_v2.json.tmp

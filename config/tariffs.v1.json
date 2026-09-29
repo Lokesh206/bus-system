@@ -1,0 +1,77 @@
+{
+  "version": "2026.1-demo",
+  "name": "Karnataka State Public Transit Demonstration Tariff Schedule",
+  "disclaimer": "Demonstration tariff dataset for educational and simulation purposes only. Not an official KSRTC or BMTC tariff.",
+  "effectiveDate": "2026-01-01",
+  "lastVerifiedDate": "2026-09-29",
+  "authoritativeSource": "Synthetic baseline adapted from Karnataka Motor Vehicles Taxation Act and public KSRTC/BMTC stage fare notifications",
+  "serviceClasses": {
+    "Karnataka Sarige": {
+      "code": "SARIGE",
+      "name": "Karnataka Sarige",
+      "description": "Standard Non-AC Ordinary Express Service",
+      "isAc": false,
+      "ratePerKm": 1.22,
+      "minFare": 15,
+      "passengerCess": 5,
+      "gstPercent": 0,
+      "shaktiEligible": true
+    },
+    "Rajahamsa": {
+      "code": "RAJAHAMSA",
+      "name": "Rajahamsa",
+      "description": "Deluxe 2+2 Semi-Sleeper Service",
+      "isAc": false,
+      "ratePerKm": 1.78,
+      "minFare": 40,
+      "passengerCess": 10,
+      "gstPercent": 0,
+      "shaktiEligible": false
+    },
+    "Airavat Club Class": {
+      "code": "AIRAVAT",
+      "name": "Airavat Club Class",
+      "description": "Premium Volvo Multi-Axle AC Service",
+      "isAc": true,
+      "ratePerKm": 2.35,
+      "minFare": 75,
+      "passengerCess": 15,
+      "gstPercent": 5,
+      "shaktiEligible": false
+    },
+    "EV Power Plus": {
+      "code": "EV_POWER",
+      "name": "EV Power Plus",
+      "description": "Intercity Electric AC Express",
+      "isAc": true,
+      "ratePerKm": 2.10,
+      "minFare": 60,
+      "passengerCess": 10,
+      "gstPercent": 5,
+      "shaktiEligible": false
+    }
+  },
+  "concessions": {
+    "shaktiScheme": {
+      "name": "Karnataka Shakti Scheme (Women Free Travel)",
+      "discountPercent": 100,
+      "eligibleGenders": ["Female"],
+      "requiresKarnatakaDomicile": true,
+      "allowedServiceClasses": ["Karnataka Sarige"],
+      "waivesCess": true,
+      "waivesToll": true
+    },
+    "seniorCitizen": {
+      "name": "Senior Citizen Concession",
+      "minAge": 60,
+      "discountPercent": 25,
+      "appliesToBaseOnly": true
+    },
+    "child": {
+      "name": "Child Concession",
+      "maxAge": 11,
+      "discountPercent": 50,
+      "appliesToBaseOnly": true
+    }
+  }
+}

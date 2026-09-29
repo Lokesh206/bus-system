@@ -16,7 +16,13 @@ const state = {
   latestBookedTicket: null,
   currentGateBusId: null,
   isCameraRunning: false,
-  html5QrScanner: null
+  html5QrScanner: null,
+  socket: null,
+  fleetMap: null,
+  busMarkers: new Map(),
+  currentLanguage: 'en',
+  polylinesLoaded: false,
+  fleetData: new Map()
 };
 
 // -------------------------------------------------------------
@@ -25,6 +31,7 @@ const state = {
 document.addEventListener('DOMContentLoaded', async () => {
   setupClock();
   setupAudioToggle();
+  setupSocketIO();
   await loadInitialData();
   setupEventListeners();
 });
@@ -116,7 +123,7 @@ function setupEventListeners() {
 function switchTab(tabId) {
   window.transitAudio.playClick();
 
-  const tabs = ['booking', 'scanner', 'manifest'];
+  const tabs = ['booking', 'scanner', 'manifest', 'fleet'];
   tabs.forEach(t => {
     const content = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
     const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
@@ -132,6 +139,13 @@ function switchTab(tabId) {
 
   if (tabId === 'manifest') {
     renderManifest();
+  } else if (tabId === 'fleet') {
+    initFleetMap();
+    setTimeout(() => {
+      if (state.fleetMap) {
+        state.fleetMap.invalidateSize();
+      }
+    }, 250);
   }
 }
 
@@ -1054,6 +1068,254 @@ async function refreshGateLogs() {
 
   } catch (err) {
     console.error('Failed to refresh gate logs:', err);
+  }
+}
+
+// -------------------------------------------------------------
+// REAL-TIME WEBSOCKET (SOCKET.IO) CLIENT
+// -------------------------------------------------------------
+function setupSocketIO() {
+  if (typeof io === 'undefined') {
+    console.warn('Socket.IO client library not loaded, running in HTTP polling mode');
+    return;
+  }
+
+  state.socket = io();
+
+  state.socket.on('connect', () => {
+    console.log('Connected to Smart Transit 2.0 Real-Time Event Gateway.');
+  });
+
+  // Fleet Telemetry Stream
+  state.socket.on('fleet:telemetry', (telemetry) => {
+    state.fleetData.set(telemetry.busId, telemetry);
+    updateFleetMarker(telemetry);
+    renderFleetCards();
+  });
+
+  state.socket.on('fleet:initial', (telemetryList) => {
+    if (Array.isArray(telemetryList)) {
+      telemetryList.forEach(t => state.fleetData.set(t.busId, t));
+      renderFleetCards();
+    }
+  });
+
+  // Real-time Gate verification broadcast
+  state.socket.on('gate:decision', (decision) => {
+    refreshGateLogs();
+    if (!document.getElementById('tabManifest').classList.contains('hidden')) {
+      renderManifest();
+    }
+  });
+
+  // Seat Inventory update broadcast
+  state.socket.on('inventory:updated', (data) => {
+    if (state.selectedBus && state.selectedBus.id === data.busId) {
+      renderSeatMap();
+    }
+  });
+}
+
+// -------------------------------------------------------------
+// LEAFLET OPENSTREETMAP LIVE FLEET TRACKING
+// -------------------------------------------------------------
+async function initFleetMap() {
+  if (state.fleetMap || typeof L === 'undefined') return;
+
+  const mapContainer = document.getElementById('fleetMap');
+  if (!mapContainer) return;
+
+  // Center map on Karnataka (Bengaluru - Mysuru corridor)
+  state.fleetMap = L.map('fleetMap').setView([12.75, 76.95], 8);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(state.fleetMap);
+
+  // Fetch and draw Karnataka State Highway Polylines
+  try {
+    const res = await fetch('/api/fleet/routes').then(r => r.json());
+    if (res.success && res.polylines) {
+      // Route 1: Bengaluru to Mysuru (Red Polyline)
+      if (res.polylines['route-1']) {
+        const latlngs1 = res.polylines['route-1'].map(p => [p.lat, p.lng]);
+        L.polyline(latlngs1, { color: '#ef4444', weight: 4, opacity: 0.8, dashArray: '6, 6' }).addTo(state.fleetMap)
+          .bindPopup('<b>Route 1:</b> Bengaluru Majestic ↔ Mysuru Suburban (145 km)');
+      }
+
+      // Route 2: Bengaluru to Mangaluru (Blue Polyline)
+      if (res.polylines['route-2']) {
+        const latlngs2 = res.polylines['route-2'].map(p => [p.lat, p.lng]);
+        L.polyline(latlngs2, { color: '#3b82f6', weight: 4, opacity: 0.8 }).addTo(state.fleetMap)
+          .bindPopup('<b>Route 2:</b> Bengaluru Majestic ↔ Mangaluru KSRTC (350 km)');
+      }
+    }
+  } catch (err) {
+    console.warn('Could not draw highway polylines:', err);
+  }
+
+  // Add initial bus markers
+  state.fleetData.forEach(t => updateFleetMarker(t));
+}
+
+function updateFleetMarker(telemetry) {
+  if (!state.fleetMap || typeof L === 'undefined') return;
+
+  const { busId, latitude, longitude, speedKmh, headingDegrees, nextStopName, remainingDistanceKm } = telemetry;
+  const isAiravat = busId.includes('4821');
+
+  // Custom Bus Icon
+  const busIcon = L.divIcon({
+    className: 'custom-bus-marker',
+    html: `
+      <div style="background: ${isAiravat ? '#b91c1c' : '#0284c7'}; color: white; padding: 4px 6px; border-radius: 8px; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.5); font-size: 10px; font-weight: bold; white-space: nowrap; display: flex; align-items: center; gap: 4px;">
+        <i class="fa-solid fa-bus" style="transform: rotate(${headingDegrees}deg);"></i>
+        <span>${busId.replace('BUS-', '')} (${speedKmh} km/h)</span>
+      </div>
+    `,
+    iconSize: [80, 24],
+    iconAnchor: [40, 12]
+  });
+
+  if (state.busMarkers.has(busId)) {
+    const marker = state.busMarkers.get(busId);
+    marker.setLatLng([latitude, longitude]);
+    marker.setIcon(busIcon);
+    marker.getPopup().setContent(`
+      <div style="font-size: 12px; font-family: sans-serif; color: #0f172a;">
+        <b style="color: #b91c1c;">Bus: ${busId}</b><br/>
+        <b>Speed:</b> ${speedKmh} km/h<br/>
+        <b>Next Stop:</b> ${nextStopName || 'En Route'}<br/>
+        <b>Remaining:</b> ${remainingDistanceKm || 0} km
+      </div>
+    `);
+  } else {
+    const marker = L.marker([latitude, longitude], { icon: busIcon }).addTo(state.fleetMap);
+    marker.bindPopup(`
+      <div style="font-size: 12px; font-family: sans-serif; color: #0f172a;">
+        <b style="color: #b91c1c;">Bus: ${busId}</b><br/>
+        <b>Speed:</b> ${speedKmh} km/h<br/>
+        <b>Next Stop:</b> ${nextStopName || 'En Route'}<br/>
+        <b>Remaining:</b> ${remainingDistanceKm || 0} km
+      </div>
+    `);
+    state.busMarkers.set(busId, marker);
+  }
+}
+
+function renderFleetCards() {
+  const container = document.getElementById('fleetTelemetryCards');
+  if (!container) return;
+
+  const items = Array.from(state.fleetData.values());
+  if (items.length === 0) {
+    container.innerHTML = `<div class="text-xs text-slate-500">Waiting for live satellite telemetry...</div>`;
+    return;
+  }
+
+  container.innerHTML = items.map(t => `
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1.5 shadow-md">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-mono font-bold text-amber-400">${t.busId}</span>
+        <span class="text-[10px] bg-slate-800 text-emerald-400 px-2 py-0.5 rounded font-mono font-bold">
+          ${t.speedKmh} km/h
+        </span>
+      </div>
+      <div class="text-xs text-slate-300 flex items-center justify-between">
+        <span class="text-slate-400">Next Stop:</span>
+        <span class="font-semibold text-white">${t.nextStopName || 'En Route'}</span>
+      </div>
+      <div class="text-[11px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-900">
+        <span>Heading: ${t.headingDegrees}°</span>
+        <span class="text-cyan-400">ETA: ~${t.etaMinutes || 15}m</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// -------------------------------------------------------------
+// TURNSTILE DIGITAL TWIN SENSOR SIMULATION
+// -------------------------------------------------------------
+function simulateSensorPassage() {
+  window.transitAudio.playClick();
+  const heading = document.getElementById('gateMessageHeading');
+  const detail = document.getElementById('gateMessageDetail');
+  const barrierContainer = document.getElementById('turnstileBarrierContainer');
+
+  heading.textContent = 'PASSENGER ENTRY DETECTED';
+  detail.textContent = 'Infrared beam broken -> Passage confirmed. Flaps closing.';
+
+  // Flaps close
+  setTimeout(() => {
+    barrierContainer.classList.remove('gate-open');
+    resetTurnstileUI();
+  }, 1200);
+}
+
+function simulateSensorObstruction() {
+  window.transitAudio.playDeniedBuzzer();
+  const display = document.getElementById('turnstileDisplay');
+  const badge = document.getElementById('gateStatusBadge');
+  const heading = document.getElementById('gateMessageHeading');
+  const detail = document.getElementById('gateMessageDetail');
+
+  display.className = 'w-full max-w-lg bg-amber-950/80 border-2 border-amber-500 rounded-xl p-4 mb-6 shadow-2xl text-center';
+  badge.className = 'inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black uppercase bg-amber-500 text-slate-950';
+  badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> SENSOR OBSTRUCTION`;
+
+  heading.textContent = 'ANTI-TAILGATING SENSOR ALARM';
+  detail.textContent = 'Beam obstruction detected in passenger passage zone. Clear doorway to proceed.';
+
+  setTimeout(() => {
+    resetTurnstileUI();
+  }, 4000);
+}
+
+function simulateEmergencyEgress() {
+  window.transitAudio.playGrantedChime();
+  const display = document.getElementById('turnstileDisplay');
+  const badge = document.getElementById('gateStatusBadge');
+  const heading = document.getElementById('gateMessageHeading');
+  const detail = document.getElementById('gateMessageDetail');
+  const barrierContainer = document.getElementById('turnstileBarrierContainer');
+
+  display.className = 'w-full max-w-lg bg-emerald-950 border-2 border-emerald-400 rounded-xl p-4 mb-6 shadow-2xl text-center';
+  badge.className = 'inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black uppercase bg-emerald-500 text-slate-950 animate-pulse';
+  badge.innerHTML = `<i class="fa-solid fa-fire-extinguisher"></i> EMERGENCY EGRESS`;
+
+  heading.textContent = 'FAIL-SAFE EGRESS ACTIVE';
+  detail.textContent = 'Gate barrier flaps held fully OPEN for unrestricted terminal evacuation.';
+
+  barrierContainer.classList.add('gate-open');
+}
+
+// -------------------------------------------------------------
+// MULTI-LANGUAGE LOCALIZATION (EN, KN, HI)
+// -------------------------------------------------------------
+async function changeLanguage(lang) {
+  try {
+    const res = await fetch(`/api/i18n/${lang}`).then(r => r.json());
+    if (!res.success || !res.strings) return;
+
+    const s = res.strings;
+    state.currentLanguage = lang;
+
+    // Update navigation labels
+    const tabBooking = document.getElementById('tabBookingLabel');
+    if (tabBooking) tabBooking.textContent = s.bookTab;
+
+    const tabScanner = document.getElementById('tabScannerLabel');
+    if (tabScanner) tabScanner.textContent = s.gateTab;
+
+    const tabManifest = document.getElementById('tabManifestLabel');
+    if (tabManifest) tabManifest.textContent = s.manifestTab;
+
+    const tabFleet = document.getElementById('tabFleetLabel');
+    if (tabFleet) tabFleet.textContent = s.fleetTab;
+
+  } catch (err) {
+    console.warn('Language change failed:', err);
   }
 }
 

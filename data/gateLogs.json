@@ -1,1 +1,52 @@
-[]
+[
+  {
+    "status": "DENIED",
+    "code": "COUNTERFEIT_DETECTED",
+    "message": "Security Alert: QR digital signature is invalid! Counterfeit ticket suspected.",
+    "ticketId": "KA-KSRTC-2026-96457",
+    "pnr": "KA512871",
+    "gateBusId": "BUS-KA-01-4821",
+    "timestamp": "2026-09-29T16:09:37.355Z"
+  },
+  {
+    "status": "DENIED",
+    "code": "WRONG_BUS",
+    "message": "Wrong Bus Gate! Ticket is valid for Bus \"KA-01-F-4821\" (Bengaluru (Majestic) -> Mysuru (Suburban BS)), NOT for Gate Bus \"KA-09-F-7712\".",
+    "ticketId": "KA-KSRTC-2026-35899",
+    "pnr": "KA851759",
+    "passengerName": "Suresh Kumar",
+    "ticketBusNumber": "KA-01-F-4821",
+    "gateBusNumber": "KA-09-F-7712",
+    "gateBusId": "BUS-KA-09-7712",
+    "timestamp": "2026-09-29T16:09:37.354Z"
+  },
+  {
+    "status": "DENIED",
+    "code": "ALREADY_USED",
+    "message": "Access Denied: Ticket already fully used! Passenger(s) already boarded at 9:39:37 pm. Re-entry is prohibited.",
+    "ticketId": "KA-KSRTC-2026-96457",
+    "pnr": "KA512871",
+    "passengerName": "Ramesh Gowda",
+    "alreadyBoardedCount": 1,
+    "totalPassengers": 1,
+    "gateBusId": "BUS-KA-01-4821",
+    "timestamp": "2026-09-29T16:09:37.310Z"
+  },
+  {
+    "status": "GRANTED",
+    "code": "ACCESS_GRANTED",
+    "message": "Welcome Aboard! Access Granted for Ramesh Gowda (Seat 12W). [Passenger 1/1]",
+    "ticketId": "KA-KSRTC-2026-96457",
+    "pnr": "KA512871",
+    "passengerName": "Ramesh Gowda",
+    "seat": "12W",
+    "busNumber": "KA-01-F-4821",
+    "route": "Bengaluru (Majestic) -> Mysuru (Suburban BS)",
+    "serviceType": "Airavat Club Class",
+    "boardedCount": 1,
+    "totalPassengers": 1,
+    "isShakti": true,
+    "gateBusId": "BUS-KA-01-4821",
+    "timestamp": "2026-09-29T16:09:37.306Z"
+  }
+]

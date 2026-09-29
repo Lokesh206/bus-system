@@ -1,0 +1,279 @@
+// Prisma Schema for Karnataka Smart Transit 2.0
+// Relational public transit operations, cryptographic boarding, and turnstile access control.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PASSENGER
+  CONDUCTOR
+  GATE_OPERATOR
+  DISPATCHER
+  ADMIN
+}
+
+enum SeatState {
+  AVAILABLE
+  HELD
+  CONFIRMED
+  CHECKED_IN
+  BOARDED
+  BLOCKED
+}
+
+enum TripStatus {
+  SCHEDULED
+  BOARDING
+  DEPARTED
+  DELAYED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum GateDecision {
+  GRANTED
+  DENIED
+  EMERGENCY_OPEN
+  MANUAL_OVERRIDE
+}
+
+enum GateHealthStatus {
+  ONLINE
+  DEGRADED
+  OFFLINE
+  FAULT
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         Role          @default(PASSENGER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  bookings     Booking[]
+  gateLogs     GateScanLog[]
+}
+
+model Terminal {
+  id        String   @id @default(uuid())
+  code      String   @unique // e.g. "KBS-MAJESTIC"
+  name      String   // e.g. "Kempegowda Bus Station (Majestic)"
+  city      String   @default("Bengaluru")
+  latitude  Float
+  longitude Float
+  gates     Gate[]
+  createdAt DateTime @default(now())
+}
+
+model Gate {
+  id             String           @id @default(uuid())
+  terminalId     String
+  terminal       Terminal         @relation(fields: [terminalId], references: [id])
+  gateCode       String           // e.g. "G1", "G2"
+  platform       String           // e.g. "Platform 3A"
+  healthStatus   GateHealthStatus @default(ONLINE)
+  assignedTripId String?
+  lastHeartbeat  DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  scanLogs       GateScanLog[]
+
+  @@unique([terminalId, gateCode])
+}
+
+model Route {
+  id                String      @id @default(uuid())
+  code              String      @unique // e.g. "KA-RT-01"
+  name              String      // e.g. "Bengaluru (Majestic) -> Mysuru (Suburban BS)"
+  source            String
+  destination       String
+  distanceKm        Float
+  estimatedDuration String      // e.g. "2h 45m"
+  highwayTollFee    Float       @default(0)
+  stops             RouteStop[]
+  trips             Trip[]
+  createdAt         DateTime    @default(now())
+}
+
+model RouteStop {
+  id            String   @id @default(uuid())
+  routeId       String
+  route         Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  sequenceOrder Int
+  stopName      String
+  latitude      Float
+  longitude     Float
+  kmFromOrigin  Float
+  createdAt     DateTime @default(now())
+
+  @@unique([routeId, sequenceOrder])
+}
+
+model Bus {
+  id             String         @id @default(uuid())
+  registrationNo String         @unique // e.g. "KA-01-F-4821"
+  serviceType    String         // e.g. "Airavat Club Class", "Karnataka Sarige"
+  isAc           Boolean        @default(false)
+  capacity       Int            @default(40)
+  seatingConfig  String         @default("2x2")
+  trips          Trip[]
+  telemetryLogs  GpsTelemetry[]
+  createdAt      DateTime       @default(now())
+}
+
+model Trip {
+  id               String          @id @default(uuid())
+  routeId          String
+  route            Route           @relation(fields: [routeId], references: [id])
+  busId            String
+  bus              Bus             @relation(fields: [busId], references: [id])
+  scheduledDeparture DateTime
+  scheduledArrival   DateTime
+  actualDeparture    DateTime?
+  status             TripStatus    @default(SCHEDULED)
+  seats              SeatInventory[]
+  bookings           Booking[]
+  gateScanLogs       GateScanLog[]
+  telemetryLogs      GpsTelemetry[]
+  disruptions        DisruptionEvent[]
+  createdAt          DateTime        @default(now())
+}
+
+model SeatInventory {
+  id            String    @id @default(uuid())
+  tripId        String
+  trip          Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  seatNumber    String    // e.g. "12W", "1A"
+  state         SeatState @default(AVAILABLE)
+  heldBySession String?
+  holdExpiresAt DateTime?
+  version       Int       @default(1) // Optimistic concurrency control
+  passengerId   String?   @unique
+  passenger     Passenger? @relation(fields: [passengerId], references: [id])
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([tripId, seatNumber])
+}
+
+model Booking {
+  id             String        @id @default(uuid())
+  pnr            String        @unique // e.g. "KA892134"
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+  tripId         String
+  trip           Trip          @relation(fields: [tripId], references: [id])
+  totalAmount    Float
+  paymentStatus  PaymentStatus @default(PENDING)
+  idempotencyKey String?       @unique
+  passengers     Passenger[]
+  payments       Payment[]
+  createdAt      DateTime      @default(now())
+}
+
+model Passenger {
+  id                  String         @id @default(uuid())
+  bookingId           String
+  booking             Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  name                String
+  age                 Int
+  gender              String
+  isKarnatakaResident Boolean        @default(false)
+  isShaktiApproved    Boolean        @default(false)
+  assignedSeat        String
+  fareAmount          Float
+  seatInventory       SeatInventory?
+  ticket              Ticket?
+  createdAt           DateTime       @default(now())
+}
+
+model Ticket {
+  id               String        @id @default(uuid())
+  ticketNumber     String        @unique // e.g. "KA-KSRTC-2026-85643"
+  passengerId      String        @unique
+  passenger        Passenger     @relation(fields: [passengerId], references: [id], onDelete: Cascade)
+  tripId           String
+  seatNumber       String
+  tokenSignature   String
+  keyIdentifier    String        @default("2026-Q3-PRIMARY")
+  nonce            String        @unique
+  validFrom        DateTime
+  validUntil       DateTime
+  isBoarded        Boolean       @default(false)
+  boardedAt        DateTime?
+  boardedGateId    String?
+  isRevoked        Boolean       @default(false)
+  revocationReason String?
+  createdAt        DateTime      @default(now())
+  scanLogs         GateScanLog[]
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  bookingId      String
+  booking        Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  provider       String        @default("SANDBOX") // "SANDBOX", "UPI_DEMO"
+  transactionRef String        @unique
+  amount         Float
+  currency       String        @default("INR")
+  status         PaymentStatus @default(PENDING)
+  idempotencyKey String        @unique
+  createdAt      DateTime      @default(now())
+}
+
+model GateScanLog {
+  id             String       @id @default(uuid())
+  timestamp      DateTime     @default(now())
+  gateId         String
+  gate           Gate         @relation(fields: [gateId], references: [id])
+  tripId         String
+  trip           Trip         @relation(fields: [tripId], references: [id])
+  ticketId       String?
+  ticket         Ticket?      @relation(fields: [ticketId], references: [id])
+  operatorId     String?
+  operator       User?        @relation(fields: [operatorId], references: [id])
+  scanInputType  String       // "OPTICAL_WEBCAM", "FILE_UPLOAD", "MANUAL", "SIMULATOR"
+  decision       GateDecision
+  diagnosticCode String       // "ACCESS_GRANTED", "ALREADY_BOARDED", "WRONG_BUS", "COUNTERFEIT_DETECTED", "EXPIRED"
+  details        String
+}
+
+model GpsTelemetry {
+  id             String   @id @default(uuid())
+  busId          String
+  bus            Bus      @relation(fields: [busId], references: [id])
+  tripId         String
+  trip           Trip     @relation(fields: [tripId], references: [id])
+  timestamp      DateTime @default(now())
+  latitude       Float
+  longitude      Float
+  speedKmh       Float
+  headingDegrees Float
+  nextStopName   String?
+  delayMinutes   Int      @default(0)
+}
+
+model DisruptionEvent {
+  id              String   @id @default(uuid())
+  tripId          String
+  trip            Trip     @relation(fields: [tripId], references: [id])
+  eventType       String   // "BREAKDOWN", "DIVERSION", "DELAY", "CANCELLATION"
+  description     String
+  reportedAt      DateTime @default(now())
+  affectedPaxNotified Boolean @default(false)
+}

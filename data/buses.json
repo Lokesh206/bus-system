@@ -10,7 +10,21 @@
     "platform": "Platform 3A, Majestic Terminal 1",
     "gate": "Gate G1",
     "totalSeats": 40,
-    "seats": {}
+    "seats": {
+      "12W": {
+        "status": "boarded",
+        "passengerName": "Ramesh Gowda",
+        "ticketId": "KA-KSRTC-2026-96457",
+        "pnr": "KA512871",
+        "boardedAt": "2026-09-29T16:09:37.306Z"
+      },
+      "14A": {
+        "status": "booked",
+        "passengerName": "Suresh Kumar",
+        "ticketId": "KA-KSRTC-2026-35899",
+        "pnr": "KA851759"
+      }
+    }
   },
   {
     "id": "BUS-KA-09-7712",
