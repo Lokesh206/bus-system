@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "dev": "node --watch server.js",
     "start": "node server.js",
     "test": "node tests/smartTransit2.test.js && node test/testFareAndGate.js",
-    "test:concurrency": "node tests/smartTransit2.test.js"
+    "test:concurrency": "node tests/smartTransit2.test.js",
+    "seed": "node scripts/seed.js"
   },
   "keywords": [],
   "author": "",
